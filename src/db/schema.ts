@@ -17,7 +17,7 @@ export const selectTasksSchema = createSelectSchema(tasks);
 
 export const insertTasksSchema = createInsertSchema(tasks, {
   // eslint-disable-next-line style/arrow-parens
-  name: (schema) => schema.name.min(1).max(500),
+  name: (schema) => schema.min(1).max(500),
 })
   .required({
     done: true,
