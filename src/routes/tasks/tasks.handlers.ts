@@ -7,6 +7,8 @@ import type { AppRouteHandler } from "@/lib/types";
 import db from "@/db";
 import { tasks } from "@/db/schema";
 import { ZOD_ERROR_CODES, ZOD_ERROR_MESSAGES } from "@/lib/constants";
+import { pubsub, SUBSCRIPTION_EVENTS } from "@/lib/pubsub";
+import { wsManager } from "@/routes/websockets/websocket.manager";
 
 import type {
   CreateRoute,
@@ -24,6 +26,10 @@ export const list: AppRouteHandler<ListRoute> = async (c) => {
 export const create: AppRouteHandler<CreateRoute> = async (c) => {
   const task = c.req.valid("json");
   const [inserted] = await db.insert(tasks).values(task).returning();
+
+  await pubsub.publish(SUBSCRIPTION_EVENTS.TASK_CREATED, { taskCreated: inserted });
+  wsManager.broadcast("tasks", { type: "task.created", task: inserted });
+
   return c.json(inserted, HttpStatusCodes.OK);
 };
 
@@ -85,6 +91,10 @@ export const patch: AppRouteHandler<PatchRoute> = async (c) => {
     );
   }
 
+  await pubsub.publish(SUBSCRIPTION_EVENTS.TASK_UPDATED, { taskUpdated: task });
+  wsManager.broadcast("tasks", { type: "task.updated", task });
+  wsManager.broadcast(`task:${task.id}`, { type: "task.updated", task });
+
   return c.json(task, HttpStatusCodes.OK);
 };
 
@@ -100,6 +110,11 @@ export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
       HttpStatusCodes.NOT_FOUND,
     );
   }
+
+  const payload = { id };
+  await pubsub.publish(SUBSCRIPTION_EVENTS.TASK_DELETED, { taskDeleted: payload });
+  wsManager.broadcast("tasks", { type: "task.deleted", ...payload });
+  wsManager.broadcast(`task:${id}`, { type: "task.deleted", ...payload });
 
   return c.body(null, HttpStatusCodes.NO_CONTENT);
 };

@@ -21,10 +21,6 @@ export const list = createRoute({
       z.array(selectTasksSchema),
       "List of tasks",
     ),
-    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(IdParamsSchema),
-      "Invalid id error",
-    ),
   },
 });
 
